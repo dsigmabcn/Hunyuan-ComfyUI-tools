@@ -149,7 +149,7 @@ def teacache_hunyuanvideo_forward(
         img = img.reshape([img.shape[0]] + shape + [self.out_channels] + self.patch_size)
         img = img.permute(0, 4, 1, 5, 2, 6, 3, 7)
         img = img.reshape(initial_shape)
-        return imgz
+        return img
         """
 
 #def teacache_ltxvmodel_forward(
