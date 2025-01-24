@@ -403,9 +403,8 @@ class TeaCache_Hunyuan:
         #                        diffusion_model,
         #                        diffusion_model.__class__
         #                    )
-        # we do not need this option for ltxv for this toolset if we want to do only Hunyuan
-        else:
-            raise ValueError(f"Unknown type {model_type}")
+        #else:
+        #    raise ValueError(f"Unknown type {model_type}")
         
         def unet_wrapper_function(model_function, kwargs):
             input = kwargs["input"]
