@@ -254,6 +254,7 @@ class FetaEnhanceNode:
 
     CATEGORY = "HUNYUAN TOOLS"
     FUNCTION = "apply_feta_enchance"
+    TITLE = "Feta Enhance Hunyuan"
 
     def apply_feta_enchance(self, model, feta_weight, attn_override=DEFAULT_ATTN):
         model = model.clone()
