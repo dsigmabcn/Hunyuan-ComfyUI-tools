@@ -4,7 +4,8 @@ Included:
 - (done) Tea Cache
 - First block cache (Wave speed)
 - (done) Model Compile advanced
-- Feta enhance
+- (done) STG (from Kijai's wrapper)
+- (done) Feta enhance
 - Video enhance
 - Multi Lora improved
 - Flow Edit
