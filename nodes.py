@@ -11,7 +11,7 @@ from comfy.ldm.flux.layers import timestep_embedding
 from comfy.ldm.lightricks.model import precompute_freqs_cis
 from comfy.ldm.common_dit import rms_norm
 
-
+#### TEA CACHE ################
 def poly1d(coefficients, x):
     '''
     This function is used later 
@@ -150,212 +150,7 @@ def teacache_hunyuanvideo_forward(
         img = img.permute(0, 4, 1, 5, 2, 6, 3, 7)
         img = img.reshape(initial_shape)
         return img
-        """
 
-#def teacache_ltxvmodel_forward(
-#        self,
-#        x,
-#        timestep,
-#        context,
-#        attention_mask,
-#        frame_rate=25,
-#        guiding_latent=None,
-#        guiding_latent_noise_scale=0,
-#        transformer_options={},
-#        **kwargs
-#    ):
-#        patches_replace = transformer_options.get("patches_replace", {})
-#        rel_l1_thresh = transformer_options.get("rel_l1_thresh", {})
-#
-#        indices_grid = self.patchifier.get_grid(
-#            orig_num_frames=x.shape[2],
-#            orig_height=x.shape[3],
-#            orig_width=x.shape[4],
-#            batch_size=x.shape[0],
-#            scale_grid=((1 / frame_rate) * 8, 32, 32),
-#            device=x.device,
-#       )
-#
-#        if guiding_latent is not None:
-#            ts = torch.ones([x.shape[0], 1, x.shape[2], x.shape[3], x.shape[4]], device=x.device, dtype=x.dtype)
-#            input_ts = timestep.view([timestep.shape[0]] + [1] * (x.ndim - 1))
-#            ts *= input_ts
-#            ts[:, :, 0] = guiding_latent_noise_scale * (input_ts[:, :, 0] ** 2)
-#            timestep = self.patchifier.patchify(ts)
-#            input_x = x.clone()
-#            x[:, :, 0] = guiding_latent[:, :, 0]
-#            if guiding_latent_noise_scale > 0:
-#                if self.generator is None:
-#                    self.generator = torch.Generator(device=x.device).manual_seed(42)
-#                elif self.generator.device != x.device:
-#                    self.generator = torch.Generator(device=x.device).set_state(self.generator.get_state())
-#
-#                noise_shape = [guiding_latent.shape[0], guiding_latent.shape[1], 1, guiding_latent.shape[3], guiding_latent.shape[4]]
-#                scale = guiding_latent_noise_scale * (input_ts ** 2)
-#                guiding_noise = scale * torch.randn(size=noise_shape, device=x.device, generator=self.generator)
-#
-#                x[:, :, 0] = guiding_noise[:, :, 0] + x[:, :, 0] *  (1.0 - scale[:, :, 0])
-#
-#
-#        orig_shape = list(x.shape)
-
-#       x = self.patchifier.patchify(x)
-
-#        x = self.patchify_proj(x)
-#        timestep = timestep * 1000.0
-
-#       attention_mask = 1.0 - attention_mask.to(x.dtype).reshape((attention_mask.shape[0], 1, -1, attention_mask.shape[-1]))
-#        attention_mask = attention_mask.masked_fill(attention_mask.to(torch.bool), float("-inf"))  # not sure about this
-        # attention_mask = (context != 0).any(dim=2).to(dtype=x.dtype)
-
-#        pe = precompute_freqs_cis(indices_grid, dim=self.inner_dim, out_dtype=x.dtype)
-
-#       batch_size = x.shape[0]
-#        timestep, embedded_timestep = self.adaln_single(
-#            timestep.flatten(),
-#            {"resolution": None, "aspect_ratio": None},
-#            batch_size=batch_size,
-#            hidden_dtype=x.dtype,
-#        )
-        # Second dimension is 1 or number of tokens (if timestep_per_token)
-#        timestep = timestep.view(batch_size, -1, timestep.shape[-1])
-#        embedded_timestep = embedded_timestep.view(
-#            batch_size, -1, embedded_timestep.shape[-1]
-#        )
-
-        # 2. Blocks
-#        if self.caption_projection is not None:
-#            batch_size = x.shape[0]
-#            context = self.caption_projection(context)
-#            context = context.view(
-#                batch_size, -1, x.shape[-1]
-#            )
-#
-#        blocks_replace = patches_replace.get("dit", {})
-
-        # enable teacache
-#        inp = x.clone()
-#        timestep_ = timestep.clone()
-#        num_ada_params = self.transformer_blocks[0].scale_shift_table.shape[0]
-#        ada_values = self.transformer_blocks[0].scale_shift_table[None, None] + timestep_.reshape(batch_size, timestep_.size(1), num_ada_params, -1)
-#        shift_msa, scale_msa, _, _, _, _ = ada_values.unbind(dim=2)
-#        modulated_inp = rms_norm(inp)
-#        modulated_inp = modulated_inp * (1 + scale_msa) + shift_msa
-        
-#        if not hasattr(self, 'accumulated_rel_l1_distance'):
-#            should_calc = True
-#            self.accumulated_rel_l1_distance = 0
-#        else:
-#            try:
-#                coefficients = [2.14700694e+01, -1.28016453e+01, 2.31279151e+00, 7.92487521e-01, 9.69274326e-03]
-#                self.accumulated_rel_l1_distance += poly1d(coefficients, ((modulated_inp-self.previous_modulated_input).abs().mean() / self.previous_modulated_input.abs().mean()))
-#                if self.accumulated_rel_l1_distance < rel_l1_thresh:
-#                    should_calc = False
-#                else:
-#                    should_calc = True
-#                    self.accumulated_rel_l1_distance = 0
-#            except:
-#                should_calc = True
-#                self.accumulated_rel_l1_distance = 0
-#                
-#        self.previous_modulated_input = modulated_inp
-
-        
-#        if not should_calc:
-#            x += self.previous_residual
-#        else:
-#            ori_x = x.clone()
-#            for i, block in enumerate(self.transformer_blocks):
-#                if ("double_block", i) in blocks_replace:
-#                    def block_wrap(args):
-#                        out = {}
-#                        out["img"] = block(args["img"], context=args["txt"], attention_mask=args["attention_mask"], timestep=args["vec"], pe=args["pe"])
-#                        return out
-
-#                    out = blocks_replace[("double_block", i)]({"img": x, "txt": context, "attention_mask": attention_mask, "vec": timestep, "pe": pe}, {"original_block": block_wrap})
-#                    x = out["img"]
-#                else:
-#                    x = block(
-#                        x,
-#                        context=context,
-#                        attention_mask=attention_mask,
-#                        timestep=timestep,
-#                        pe=pe
-#                    )
-
-            # 3. Output
-#            scale_shift_values = (
-#                self.scale_shift_table[None, None].to(device=x.device, dtype=x.dtype) + embedded_timestep[:, :, None]
-#            )
-#            shift, scale = scale_shift_values[:, :, 0], scale_shift_values[:, :, 1]
-#            x = self.norm_out(x)
-#            # Modulation
-#            x = x * (1 + scale) + shift
-#            self.previous_residual = x - ori_x
-
-#        x = self.proj_out(x)
-
-#        x = self.patchifier.unpatchify(
-#            latents=x,
-#            output_height=orig_shape[3],
-#            output_width=orig_shape[4],
-#            output_num_frames=orig_shape[2],
-#            out_channels=orig_shape[1] // math.prod(self.patchifier.patch_size),
-#        )
-
-#        if guiding_latent is not None:
-#            x[:, :, 0] = (input_x[:, :, 0] - guiding_latent[:, :, 0]) / input_ts[:, :, 0]
-
-        # print("res", x)
-#        return x
-
-#class TeaCacheForImgGen:
-#    @classmethod
-#    def INPUT_TYPES(s):
-#        return {
-#            "required": {
-#                "model": ("MODEL", {"tooltip": "The image diffusion model the TeaCache will be applied to."}),
-#                "model_type": (["flux"],),
-#                "rel_l1_thresh": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 10.0, "step": 0.01, "tooltip": "How strongly to cache the output of diffusion model. This value must be non-negative."})
-#            }
-#        }
-    
-#    RETURN_TYPES = ("MODEL",)
-#    RETURN_NAMES = ("model",)
-#    FUNCTION = "apply_teacache"
-#    CATEGORY = "TeaCache"
-#    TITLE = "TeaCache For Img Gen"
-    
-#    def apply_teacache(self, model, model_type: str, rel_l1_thresh: float):
-#        if rel_l1_thresh == 0:
-#            return (model,)
-
- #       new_model = model.clone()
- #       if 'transformer_options' not in new_model.model_options:
- #           new_model.model_options['transformer_options'] = {}
- #       new_model.model_options["transformer_options"]["rel_l1_thresh"] = rel_l1_thresh
- #       diffusion_model = new_model.get_model_object("diffusion_model")
-
- #       if model_type == "flux":
- #           forward_name = "forward_orig"
- #           replaced_forward_fn = teacache_flux_forward.__get__(
- #                               diffusion_model,
- #                               diffusion_model.__class__
-                            )
- #       else:
- #           raise ValueError(f"Unknown type {model_type}")
-        
- #       def unet_wrapper_function(model_function, kwargs):
- #           input = kwargs["input"]
- #           timestep = kwargs["timestep"]
- #           c = kwargs["c"]
- #           with patch.object(diffusion_model, forward_name, replaced_forward_fn):
- #               return model_function(input, timestep, **c)
-
- #       new_model.set_model_unet_function_wrapper(unet_wrapper_function)
-        
- #       return (new_model,)
- """   
 class TeaCache_Hunyuan:
     @classmethod
     def INPUT_TYPES(s):
@@ -370,7 +165,7 @@ class TeaCache_Hunyuan:
     RETURN_TYPES = ("MODEL",)
     RETURN_NAMES = ("model",)
     FUNCTION = "apply_teacache"
-    CATEGORY = "TeaCache"
+    CATEGORY = "HUNYUAN TOOLS"
     TITLE = "TeaCache For Hunyuan"
     
     #def apply_teacache(self, model, model_type: str, rel_l1_thresh: float):
@@ -390,22 +185,7 @@ class TeaCache_Hunyuan:
                             diffusion_model,
                             diffusion_model.__class__
                         )
-        
-        #if model_type == "hunyuan_video":
-        #    forward_name = "forward_orig"
-        #    replaced_forward_fn = teacache_hunyuanvideo_forward.__get__(
-        #                       diffusion_model,
-        #                        diffusion_model.__class__
-        #                    )
-        #elif model_type == "ltxv":
-        #    forward_name = "forward"
-        #    replaced_forward_fn = teacache_ltxvmodel_forward.__get__(
-        #                        diffusion_model,
-        #                        diffusion_model.__class__
-        #                    )
-        #else:
-        #    raise ValueError(f"Unknown type {model_type}")
-        
+  
         def unet_wrapper_function(model_function, kwargs):
             input = kwargs["input"]
             timestep = kwargs["timestep"]
@@ -416,7 +196,8 @@ class TeaCache_Hunyuan:
         new_model.set_model_unet_function_wrapper(unet_wrapper_function)
 
         return (new_model,)
-    
+
+##### OOMPILE ##########################    
 class CompileModel:
     @classmethod
     def INPUT_TYPES(s):
@@ -433,7 +214,7 @@ class CompileModel:
     RETURN_TYPES = ("MODEL",)
     RETURN_NAMES = ("model",)
     FUNCTION = "apply_compile"
-    CATEGORY = "TeaCache"
+    CATEGORY = "HUNYUAN TOOLS"
     TITLE = "Compile Model"
     
     def apply_compile(self, model, mode: str, backend: str, fullgraph: bool, dynamic: bool):
@@ -451,13 +232,53 @@ class CompileModel:
                             )
         #torch.compile info here: https://pytorch.org/docs/main/generated/torch.compile.html
         return (new_model,)
-    
 
+###########################################################################################
+###               HYFETA ENHANCE CODE                                                    ###
+###########################################################################################
+DEFAULT_ATTN = {
+    'double': [i for i in range(0, 100, 1)],#[0,1,2,3,4,5,6,7,9,11,13,15,17,19,21,23,25],
+    'single': [i for i in range(0, 100, 1)]
+}
+
+class FetaEnhanceNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { 
+            "model": ("MODEL",),
+            "feta_weight": ("FLOAT", {"default": 2, "min": -100.0, "max": 100.0, "step":0.01}),
+        }, "optional": {
+            "attn_override": ("ATTN_OVERRIDE",)
+        }}
+    RETURN_TYPES = ("MODEL",)
+
+    CATEGORY = "HUNYUAN TOOLS"
+    FUNCTION = "apply_feta_enchance"
+
+    def apply_feta_enchance(self, model, feta_weight, attn_override=DEFAULT_ATTN):
+        model = model.clone()
+
+        model_options = model.model_options.copy()
+        transformer_options = model_options['transformer_options'].copy()
+
+        transformer_options['feta_weight'] = feta_weight
+        transformer_options['feta_layers'] = attn_override
+        model_options['transformer_options'] = transformer_options
+
+        model.model_options = model_options
+        return (model,)
+
+
+#####################################################################
+## NODE CLASSES MAPPING                                            ##
+#####################################################################
 NODE_CLASS_MAPPINGS = {
     #"TeaCacheForImgGen": TeaCacheForImgGen,
     #"TeaCacheForVidGen": TeaCacheForVidGen,
+    "FetaEnhance": FetaEnhanceNode,
     "TeaCache_Hunyuan": TeaCache_Hunyuan,
     "CompileModel": CompileModel
+    
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
