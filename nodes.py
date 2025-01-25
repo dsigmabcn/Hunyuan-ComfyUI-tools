@@ -270,12 +270,83 @@ class FetaEnhanceNode:
         return (model,)
 
 
+
+###########################################################################################
+###               STG ENHANCE CODE                                                    ###
+###########################################################################################
+#DEFAULT_ATTN = {
+#    'double': [i for i in range(0, 100, 1)],#[0,1,2,3,4,5,6,7,9,11,13,15,17,19,21,23,25],
+#    'single': [i for i in range(0, 100, 1)]
+#}
+
+#class FetaEnhanceNode:
+#    @classmethod
+#    def INPUT_TYPES(s):
+#        return {"required": { 
+#            "model": ("MODEL",),
+#            "feta_weight": ("FLOAT", {"default": 2, "min": -100.0, "max": 100.0, "step":0.01}),
+#        }, "optional": {
+#            "attn_override": ("ATTN_OVERRIDE",)
+#        }}
+#    RETURN_TYPES = ("MODEL",)
+#
+#    CATEGORY = "HUNYUAN TOOLS"
+#    FUNCTION = "apply_feta_enchance"
+#    TITLE = "Feta Enhance Hunyuan"
+#
+
+class HunyuanSTG:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "stg_mode": (["STG-A", "STG-R"],),
+                "stg_block_idx": ("INT", {"default": 0, "min": -1, "max": 39, "step": 1, "tooltip": "Block index to apply STG"}),
+                "stg_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01, "tooltip": "Recommended values are ≤2.0"}),
+                "stg_start_percent": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Start percentage of the steps to apply STG"}),
+                "stg_end_percent": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "End percentage of the steps to apply STG"}),
+            },
+        }
+    RETURN_TYPES = ("MODEL",)
+    RETURN_NAMES = ("model",)
+    FUNCTION = "apply_STG"
+    CATEGORY = "HUNYUAN TOOLS"
+    DESCRIPTION = "Spatio Temporal Guidance, https://github.com/junhahyung/STGuidance"
+    TITLE = "STG Hunyuan"
+
+    def apply_STG(self, model, stg_mode, stg_block_idx, stg_scale, stg_start_percent, stg_end_percent):#attn_override=DEFAULT_ATTN):
+        model = model.clone()
+
+        model_options = model.model_options.copy()
+        transformer_options = model_options['transformer_options'].copy()
+
+        transformer_options['stg_mode'] = stg_mode
+        transformer_options['stg_block_idx'] = stg_block_idx
+        transformer_options['stg_scale,'] = stg_scale,
+        transformer_options['stg_start_percent'] = stg_start_percent
+        transformer_options['stg_end_percent'] = stg_end_percent       
+        #transformer_options['feta_layers'] = attn_override
+        model_options['transformer_options'] = transformer_options
+
+        model.model_options = model_options
+        return (model,)
+
+            #stg_mode=stg_args["stg_mode"] if stg_args is not None else None,
+            #stg_block_idx=stg_args["stg_block_idx"] if stg_args is not None else -1,
+            #stg_scale=stg_args["stg_scale"] if stg_args is not None else 0.0,
+            #stg_start_percent=stg_args["stg_start_percent"] if stg_args is not None else 0.0,
+            #stg_end_percent=stg_args["stg_end_percent"] if stg_args is not None else 1.0,
+
+
+
 #####################################################################
 ## NODE CLASSES MAPPING                                            ##
 #####################################################################
 NODE_CLASS_MAPPINGS = {
     #"TeaCacheForImgGen": TeaCacheForImgGen,
     #"TeaCacheForVidGen": TeaCacheForVidGen,
+    "HunyuanSTG": HunyuanSTG,
     "FetaEnhance": FetaEnhanceNode,
     "TeaCache_Hunyuan": TeaCache_Hunyuan,
     "CompileModel": CompileModel
