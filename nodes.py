@@ -11,6 +11,19 @@ from comfy.ldm.flux.layers import timestep_embedding
 from comfy.ldm.lightricks.model import precompute_freqs_cis
 from comfy.ldm.common_dit import rms_norm
 
+
+############## SEG ATTENTION ################################
+
+#import math
+
+from einops import rearrange
+#import torch
+import torch.nn.functional as F
+
+from comfy.ldm.modules.attention import optimized_attention
+import comfy.model_patcher
+import comfy.samplers
+
 ###########################################################################################
 ###               TEA CACHE NODE                                                         ##
 ###########################################################################################
