@@ -11,7 +11,9 @@ from comfy.ldm.flux.layers import timestep_embedding
 from comfy.ldm.lightricks.model import precompute_freqs_cis
 from comfy.ldm.common_dit import rms_norm
 
-#### TEA CACHE ################
+###########################################################################################
+###               TEA CACHE NODE                                                         ##
+###########################################################################################
 def poly1d(coefficients, x):
     '''
     This function is used later 
@@ -197,7 +199,10 @@ class TeaCache_Hunyuan:
 
         return (new_model,)
 
-##### OOMPILE ##########################    
+###########################################################################################
+###              COMPILE NODE                                                            ##
+###########################################################################################
+
 class CompileModel:
     @classmethod
     def INPUT_TYPES(s):
@@ -234,7 +239,7 @@ class CompileModel:
         return (new_model,)
 
 ###########################################################################################
-###               HYFETA ENHANCE CODE                                                    ###
+###               HYFETA ENHANCE CODE                                                    ##
 ###########################################################################################
 DEFAULT_ATTN = {
     'double': [i for i in range(0, 100, 1)],#[0,1,2,3,4,5,6,7,9,11,13,15,17,19,21,23,25],
@@ -274,26 +279,6 @@ class FetaEnhanceNode:
 ###########################################################################################
 ###               STG ENHANCE CODE                                                    ###
 ###########################################################################################
-#DEFAULT_ATTN = {
-#    'double': [i for i in range(0, 100, 1)],#[0,1,2,3,4,5,6,7,9,11,13,15,17,19,21,23,25],
-#    'single': [i for i in range(0, 100, 1)]
-#}
-
-#class FetaEnhanceNode:
-#    @classmethod
-#    def INPUT_TYPES(s):
-#        return {"required": { 
-#            "model": ("MODEL",),
-#            "feta_weight": ("FLOAT", {"default": 2, "min": -100.0, "max": 100.0, "step":0.01}),
-#        }, "optional": {
-#            "attn_override": ("ATTN_OVERRIDE",)
-#        }}
-#    RETURN_TYPES = ("MODEL",)
-#
-#    CATEGORY = "HUNYUAN TOOLS"
-#    FUNCTION = "apply_feta_enchance"
-#    TITLE = "Feta Enhance Hunyuan"
-#
 
 class HunyuanSTG:
     @classmethod
@@ -332,11 +317,112 @@ class HunyuanSTG:
         model.model_options = model_options
         return (model,)
 
-            #stg_mode=stg_args["stg_mode"] if stg_args is not None else None,
-            #stg_block_idx=stg_args["stg_block_idx"] if stg_args is not None else -1,
-            #stg_scale=stg_args["stg_scale"] if stg_args is not None else 0.0,
-            #stg_start_percent=stg_args["stg_start_percent"] if stg_args is not None else 0.0,
-            #stg_end_percent=stg_args["stg_end_percent"] if stg_args is not None else 1.0,
+
+############## SEG ATTENTION ################################
+
+import math
+
+from einops import rearrange
+import torch
+import torch.nn.functional as F
+
+from comfy.ldm.modules.attention import optimized_attention
+import comfy.model_patcher
+import comfy.samplers
+
+
+def gaussian_blur_2d(img, kernel_size, sigma):
+    '''
+    This function is used later in SEGAttention
+    '''
+    height = img.shape[-1]
+    kernel_size = min(kernel_size, height - (height % 2 - 1))
+    ksize_half = (kernel_size - 1) * 0.5
+
+    x = torch.linspace(-ksize_half, ksize_half, steps=kernel_size)
+
+    pdf = torch.exp(-0.5 * (x / sigma).pow(2))
+
+    x_kernel = pdf / pdf.sum()
+    x_kernel = x_kernel.to(device=img.device, dtype=img.dtype)
+
+    kernel2d = torch.mm(x_kernel[:, None], x_kernel[None, :])
+    kernel2d = kernel2d.expand(img.shape[-3], 1, kernel2d.shape[0], kernel2d.shape[1])
+
+    padding = [kernel_size // 2, kernel_size // 2, kernel_size // 2, kernel_size // 2]
+
+    img = F.pad(img, padding, mode="reflect")
+    img = F.conv2d(img, kernel2d, groups=img.shape[-3])
+
+    return img
+
+
+class SEGAttention:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "scale": ("FLOAT", {"default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01, "round": 0.01}),
+                "blur": ("FLOAT", {"default": 10.0, "min": 0.0, "max": 999.0, "step": 0.01, "round": 0.01}),
+                "inf_blur": ("BOOLEAN", {"default": False} )
+            }
+        }
+
+    RETURN_TYPES = ("MODEL",)
+    FUNCTION = "patch"
+    CATEGORY = "HUNYUAN TOOLS"
+    DESCRIPTION = "SEG Attention node from  https://github.com/logtd/ComfyUI-SEGAttention"
+    TITLE = "SEG Attention"
+
+    def patch(self, model, scale, blur, inf_blur):
+        m = model.clone()
+
+        def seg_attention(q, k, v, extra_options, mask=None):
+            _, sequence_length, _ = q.shape
+            shape = extra_options['original_shape']
+            oh, ow = shape[-2:]
+            ratio = oh/ow
+            d = sequence_length
+            w = int((d/ratio)**(0.5))
+            h = int(d/w)
+            q = rearrange(q, 'b (h w) d -> b d w h', h=h)
+            if not inf_blur:
+                kernel_size = math.ceil(6 * blur) + 1 - math.ceil(6 * blur) % 2
+                q = gaussian_blur_2d(q, kernel_size, blur)
+            else:
+                q = q.mean(dim=(-2, -1), keepdim=True)
+            q = rearrange(q, 'b d w h -> b (h w) d')
+            return optimized_attention(q, k, v, extra_options['n_heads'])
+
+        def post_cfg_function(args):
+            model = args["model"]
+
+            cond_pred = args["cond_denoised"]
+            uncond_pred = args["uncond_denoised"]
+
+            if scale == 0 or blur == 0:
+                return uncond_pred + (cond_pred - uncond_pred)
+            
+            cond = args["cond"]
+            sigma = args["sigma"]
+            model_options = args["model_options"].copy()
+            x = args["input"]
+            # Hack since comfy doesn't pass in conditionals and unconditionals to cfg_function
+            # and doesn't pass in cond_scale to post_cfg_function
+            len_conds = 1 if args.get('uncond', None) is None else 2 
+            
+            model_options = comfy.model_patcher.set_model_options_patch_replace(model_options, seg_attention, "attn1", "middle", 0)
+            (seg,) = comfy.samplers.calc_cond_batch(model, [cond], x, sigma, model_options)
+
+            if len_conds == 1:
+                return cond_pred + scale * (cond_pred - seg)
+
+            return cond_pred + (scale-1.0) * (cond_pred - uncond_pred) + scale * (cond_pred - seg)
+
+        m.set_model_sampler_post_cfg_function(post_cfg_function)
+
+        return (m,)
 
 
 
@@ -349,8 +435,9 @@ NODE_CLASS_MAPPINGS = {
     "HunyuanSTG": HunyuanSTG,
     "FetaEnhance": FetaEnhanceNode,
     "TeaCache_Hunyuan": TeaCache_Hunyuan,
+    "SEGAttention": SEGAttention,
     "CompileModel": CompileModel
     
 }
 
-NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
+NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()} #it lloks for the title in the nodes, so it needs they need to be defined there, otherwise there is an error
