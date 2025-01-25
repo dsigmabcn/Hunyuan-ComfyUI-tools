@@ -15,5 +15,12 @@ Included:
 
 Kidnapping from:
 https://github.com/logtd/ComfyUI-HunyuanLoom
+
 https://github.com/welltop-cn/ComfyUI-TeaCache
+
+https://github.com/kijai/ComfyUI-HunyuanVideoWrapper
+
+https://github.com/logtd/ComfyUI-SEGAttention/blob/main/__init__.py
+
+
 
