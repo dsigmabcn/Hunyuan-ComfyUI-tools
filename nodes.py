@@ -27,6 +27,7 @@ import comfy.samplers
 ###########################################################################################
 ###               TEA CACHE NODE                                                         ##
 ###########################################################################################
+
 def poly1d(coefficients, x):
     '''
     This function is used later 
@@ -167,13 +168,18 @@ def teacache_hunyuanvideo_forward(
         return img
 
 class TeaCache_Hunyuan:
+    '''
+        From TTPlanet https://github.com/TTPlanetPig/Comfyui_TTP_Toolset/blob/main/TTP_toolsets.py
+        predefined_speeds = [1.0, 1.6, 2.1, 3.2, 4.4]
+        predefined_thresholds = [0.0, 0.1, 0.15, 0.25, 0.35]
+    '''
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "model": ("MODEL", {"tooltip": "The video diffusion model the TeaCache will be applied to."}),
                 #"model_type": (["hunyuan_video", "ltxv"],), #we only need hunyuan
-                "rel_l1_thresh": ("FLOAT", {"default": 0.15, "min": 0.0, "max": 10.0, "step": 0.01, "tooltip": "How strongly to cache the output of diffusion model. This value must be non-negative."})
+                "rel_l1_thresh": ("FLOAT", {"default": 0.15, "min": 0.0, "max": 10.0, "step": 0.01, "tooltip": "Speed up: x1.0 = 0, x1.6 = 0.1, x2.1 = 0.15, x3.2=0.5, x4.4 = 0.35"})
             }
         }
     
@@ -443,8 +449,6 @@ class SEGAttention:
 ## NODE CLASSES MAPPING                                            ##
 #####################################################################
 NODE_CLASS_MAPPINGS = {
-    #"TeaCacheForImgGen": TeaCacheForImgGen,
-    #"TeaCacheForVidGen": TeaCacheForVidGen,
     "HunyuanSTG": HunyuanSTG,
     "FetaEnhance": FetaEnhanceNode,
     "TeaCache_Hunyuan": TeaCache_Hunyuan,
